@@ -1,0 +1,278 @@
+---
+title: "Project-2"
+author: "Saniya Abushakimova"
+date: "5/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+#### Aim
+The purpose of this project is to analyze what factors influence the level of life satisfaction of people living in developing countries. The project particularly tries to give an answer to the following research question: *"What did affect the Life Satisfaction rate of people from developing countries in 2016?"*. 
+
+#### Dataset description
+The dataset was collected manually by combining multiple charts from [Our World in Data](https://ourworldindata.org/charts). The original charts contained a lot of information, however for the purpose of this project, only developing countries in 2016 were taken into consideration. More details on the data preprocessing part can be found in */data/data_preprocessing.ipynb*. <br />
+<br />
+The dataset includes 84 observations, which corresponds to 84 developing countries, and 13 different numerical variables.<br />
+<br />
+**Response variable (Y):** <br />
+`life_satisfaction` - life satisfaction rate. It illustrates the average of survey responses to the 'Cantril Ladder' question, in which the best possible life is rated as 10, and the worst one as 0. [[Source](https://ourworldindata.org/grapher/gdp-vs-happiness)]
+
+**Predictor variables (X):** <br />
+`GDP` - Gross Domestic Product. It is measured in $ and indicates how good is the economy of a country. [[Source](https://ourworldindata.org/grapher/gdp-vs-happiness)] <br />
+`GHI` - Global Hunger Index. It measures the rate of hunger by country based on 4 key indicators: undernourishment, child wasting, child stunting, and child mortality.The scale is from 0 (no hunger) to 100 (severe hunger). [[Source](https://ourworldindata.org/grapher/global-hunger-index?tab=table)] <br />
+`life_expectancy` - life expectancy in years. [[Source](https://ourworldindata.org/grapher/life-satisfaction-vs-life-expectancy)] <br />
+`unemployment` - unemployment rate. It is a share of the labor force that is unemployed and is given in %. [[Source](https://ourworldindata.org/grapher/unemployment-rate?tab=table)] <br />
+`HDI` -  Human Development Index. It measures the average achievement of human development in three areas: a long and healthy life, being knowledgeable, and a decent standard of living. The scale is from 0 (very low) to 1 (very high). [[Source](https://ourworldindata.org/human-development-index)] <br />
+`corruption` -  corruption rate. It measures the level of corruption by country. The scale is from 100 (no corruption) to 0 (very high corruption rate). [[Source](https://ourworldindata.org/grapher/ti-corruption-perception-index?tab=table&time=2012..2017 )] <br />
+`depression` - percentage of people with depressive disorders. It is given in %. [[Source](https://ourworldindata.org/grapher/depression-vs-self-reported-life-satisfaction?tab=table)] <br />
+`obesity` - share of people (aged 18 and above) who are obese (BMI>30). It is given in %. [[Source](https://ourworldindata.org/grapher/share-of-adults-defined-as-obese?tab=table)] <br />
+`suicide` - suicide mortality rate. It measures the number of siucide deaths in a year per 100,000 population. [[Source](https://ourworldindata.org/grapher/suicide-rate?tab=table)] <br />
+`fruit_consumption` - average supply of fruit across the population. It is measured in kilograms per person per year. [[Source](https://ourworldindata.org/grapher/fruit-consumption-per-capita)] <br />
+`veg_consumption` - average supply of vegetables across the population. It is measured in kilograms per person per year. [[Source](https://ourworldindata.org/grapher/vegetable-consumption-per-capita)] <br />
+`birth_rate` - the number of live births occurring during the year, per 1,000 people. [[Source](https://ourworldindata.org/grapher/crude-birth-rate?country=~OWID_WRL)] <br />
+`under_five_deaths` - under-five children mortality rate. It indicates deaths under age age 5 per 1,000 live births, and is given in %. [[Source](https://ourworldindata.org/grapher/correlation-between-child-mortality-and-mean-years-of-schooling-for-those-aged-15-and-older?tab=table&time=2016)] <br />
+<br />
+This is an **observational study**, which means no preliminary research on topic was done. All predictor variables were chosen based on the assumption that they might somehow be related to the life satisfaction rate. <br />
+<br />
+``` {r, message = FALSE}
+# Loading all the necessary packages
+library(rmarkdown)
+library(car)
+library(corrplot)
+library(latex2exp)
+library(olsrr)
+library(lmtest)
+library(leaps)
+```
+
+The dataset is shown below:
+``` {r}
+# Loading and printing the data
+data <- data.frame(read.csv(file ='~/Desktop/Project-2/data/final_dataset.csv'))
+paged_table(data)
+# Removing unnecessary columns
+data_reduced_1 <- subset(data, select = -c(Index,Country,Year))
+```
+
+## Exploratory Data Analysis
+Let's start the exploratory data analysis from observing the **statistical summary**. It will help us to understand the data in general terms.
+``` {r}
+summary(data_reduced_1)
+```
+
+From the above table we can observe that:<br />
+1. Low variability - `life_satisfaction`, `HDI`, `depression`.<br />
+2. Moderate variability - `GHI`, `life_expectancy`, `unemployment`, `corruption`, `obesity`, `suicide`, `under_five_deaths`, `birth_rate`.<br />
+3. High variability - `GDP`, `veg_consumption`, `fruit consumption`.<br />
+4. Potential outliers can be in `GDP`, `GHI`, `obesity`, `suicide`, `fruit_consumption`, `veg_consumption`, `birth_rate`, `under_five_deaths`, `unemployment` because the mean and the median of these features are not close to each other. Let's verify 4 by looking at the **box plots**.
+
+``` {r}
+# Plotting the box plots
+par(mfrow=c(2,2))
+par(cex.axis=0.7)
+boxplot(data_reduced_1[c("GHI", "obesity", "unemployment", "birth_rate", "corruption","life_expectancy")],las=1,horizontal = TRUE)
+boxplot(data_reduced_1[c("veg_consumption","fruit_consumption")],las=1,horizontal = TRUE)
+boxplot(data_reduced_1[c("life_satisfaction","HDI","depression","suicide","under_five_deaths")],las=1,horizontal = TRUE)
+boxplot(data_reduced_1$GDP,horizontal = TRUE)
+title(ylab="GDP", line=0.3, cex.lab=0.7)
+```     
+
+As it can be seen from the above box plots,`corruption`, `unemployment`, `fruit_consumption`, `veg_consumption`, `under_five_deaths`, `suicide`, `depression`, `GDP` have outliers. We might consider to remove some of them in future if they influence the model significantly. Now, it is worth to investigate the **correlation** between variables, becuase it might give us a clue whether multicollinearity may be present in the model. 
+
+``` {r}
+# Plotting the correlation matrix
+corr.matrix <- cor(data_reduced_1)
+corrplot(corr.matrix, method="circle")
+``` 
+
+The correlation matrix shows that there are many variables that are highly correlated with each other. This may serve as a warning for us to carefully investigate multicollinearity in the model.
+
+## Feature/Model Selection
+Let's start our model selection with simple additive model that contains all variables, and let's observe the p-values for the individual F-tests.
+``` {r}
+# Fitting an additive model containing all 13 variables
+m_1 <- lm(life_satisfaction~., data = data_reduced_1)
+summary(m_1)
+```
+
+According to thee individual F-tests, some of the variables seem to be significant and some of them not, however it seems that these significance tests may be misleading because of the multicollinearity that may be present in our model. A systematic way to detect multicollinearity would be to look at the **variance inflation factor (VIF)** scores.
+``` {r}
+vif(m_1)
+``` 
+
+As we can see there are some severe multicollinearities present in the model. It is important to handle them because otherwise it will be difficult to identify which variables are truly significant to the model. We will handle multicollinearity by dropping the variables with the most severe VIF scores one at a time. The most severe ones are considered to be those larger than 10. We will also try to balance VIF's in such a way that they all be under some threshold, which is usually 5.
+
+#### Handling Multicollinearity
+Let's remove `life_expectancy`  first becuase it has the largest VIF value and see how the removal will affect other variables.
+``` {r}
+# Removing 'life_expectancy'
+data_reduced_2 <- subset(data_reduced_1, select = -c(life_expectancy))
+m_2 <- lm(life_satisfaction~., data = data_reduced_2)
+vif(m_2)
+``` 
+
+As it can be seen from the values there is still multicollinearity present, therefore let's proceed with removing variables with the highest VIF score.
+
+``` {r}
+# Removing 'HDI'
+data_reduced_3 <- subset(data_reduced_2, select = -c(HDI))
+m_3 <- lm(life_satisfaction~., data = data_reduced_3)
+vif(m_3)
+``` 
+
+``` {r}
+# Removing 'under_five_deaths'
+data_reduced_4 <- subset(data_reduced_3, select = -c(under_five_deaths))
+m_4 <- lm(life_satisfaction~., data = data_reduced_4)
+vif(m_4)
+``` 
+
+After removing three variables with the highest multicollinearity, the resultant dataset that we will utilize further is `data_reduced_4`. It containst 10 variables and all of their VIF scores are below the threshold=5.<br />
+We will now proceed with finding the subset of variables that will explain `life_satisfaction` in the best way.
+
+#### Best subset
+``` {r}
+# Finding the best subset of variables
+subsets <-regsubsets(life_satisfaction~., nbest=3, data=data_reduced_4)
+all_output <- summary(subsets)
+with(all_output, round(cbind(which, adjr2, cp, bic),3))
+```
+
+According to $R_a^2$, Mallows's $C_p$ and BIC, the best subset is a combination of `veg_consumption`+`GDP`+`GHI`+`unemployment`+`depression`, row #5 (1). Let's fit this model.
+``` {r}
+# Fitting the model with the best subset of variables
+best_m_1 <- lm(life_satisfaction~veg_consumption+GDP+GHI+unemployment+depression,data=data_reduced_4)
+summary(best_m_1)
+``` 
+
+As it can be noticed all individual F-tests show that all variables present in this model are significant. We will now perform some model diagnostics to see what should be improved futher.
+
+## Model Diagnostics
+1. Added-variable plots
+2. Outliers/Influence points
+3. Normality
+4. Independence
+5. Linearity/Homogeneity of variance
+
+#### Added-variable plots
+``` {r}
+avPlots(best_m_1)
+```
+
+According to the Added-Variable plots, all variables seem to be significant to the model because the blue line has some slope. There is also no need for higher-order terms because the plots do not have any non-linear pattern. However we may need to have interaction terms. In order to investigate whether there is a need for interaction terms we can plot the residuals from our additive model vs each interaction term.
+
+``` {r}
+par(mfrow=c(3,4))
+plot(best_m_1$residuals,data_reduced_4$veg_consumption*data_reduced_4$GDP,
+     ylab="e_i",xlab="veg_consumption*GDP")
+plot(best_m_1$residuals,data_reduced_4$veg_consumption*data_reduced_4$GHI,
+     ylab="e_i",xlab="veg_consumption*GHI")
+plot(best_m_1$residuals,data_reduced_4$veg_consumption*data_reduced_4$unemployment,
+     ylab="e_i",xlab="veg_consumption*unemployment")
+plot(best_m_1$residuals,data_reduced_4$veg_consumption*data_reduced_4$depression,
+     ylab="e_i",xlab="veg_consumption*depression")
+plot(best_m_1$residuals,data_reduced_4$GDP*data_reduced_4$GHI,
+     ylab="e_i",xlab="GDP*GHI")
+plot(best_m_1$residuals,data_reduced_4$GDP*data_reduced_4$unemployment,
+     ylab="e_i",xlab="GDP*unemployment")
+plot(best_m_1$residuals,data_reduced_4$GDP*data_reduced_4$depression,
+     ylab="e_i",xlab="GDP*depression")
+plot(best_m_1$residuals,data_reduced_4$GHI*data_reduced_4$unemployment,
+     ylab="e_i",xlab="GHI*unemployment")
+plot(best_m_1$residuals,data_reduced_4$GHI*data_reduced_4$depression,
+     ylab="e_i",xlab="GHI*depression")
+plot(best_m_1$residuals,data_reduced_4$unemployment*data_reduced_4$depression,
+     ylab="e_i",xlab="unemployment*depression")
+```
+
+The above plots do not reveal any non-linear patter which suggests that our model does not need interaction terms either. We should now proceed with analyzing the outliers, and see if we can drop some of those that influence our model significantly.
+
+#### Outliers
+``` {r}
+# Plotting Cook's distance chart
+ols_plot_cooksd_chart(best_m_1)
+
+# Plotting Studentized Residuals vs Leverage Plot
+ols_plot_resid_lev(best_m_1)
+```
+
+From both of the plots, it seems that observation 42 is an influential point, therefore we can remove it from the dataset, and fit a new model.
+``` {r}
+# Removing observation 42 and fitting a new model
+data_reduced_5 <- data_reduced_4[-c(42),]
+best_m_2 <- lm(life_satisfaction~veg_consumption+GDP+GHI+unemployment+depression, data=data_reduced_5)
+```
+
+Now let's compare the model with and without the influential point.
+``` {r}
+summary(best_m_1)
+summary(best_m_2)
+```
+
+It can be observed that the significance of the variables did not change, however coefficients did change which is due to the fact that observation 42 influenced the skewness of the model a lot. We also can observe that $R_a^2$ increased a little bit. Now let's proceed with verifying our 4 main assumptions.
+
+#### Checking assumptions
+``` {r}
+par(mfrow=c(2,2))
+qqnorm(best_m_2$residuals)
+qqline(best_m_2$residuals, col = "blue")
+plot(best_m_2$residuals, 
+     ylab=TeX("$e_i$"),
+     main = "Time Series Plot of the Residuals")
+abline(h=0, col="red")
+plot(fitted(best_m_2),best_m_2$residuals,
+     ylab=TeX("$e_i$"), xlab=TeX("\\hat{y_i}"),
+     main = "Residuals vs Fitted values")
+abline(h=0, col="green")
+``` 
+
+**1. Normality**
+The residuals must be normally distributed. It can be checked visually with the help of *Q-Q plot*. The Q-Q line is aproximately straight and diagonal, which suggests that our residuals are normally distributed.<br />
+
+**2. Independence**
+The residuals also must be independent of each other. We can check for independence by looking at the *Time-Series Plot of the Residuals*. The plot reveals no particular pattern, therefore we can conclude that out residuals are independent.
+
+**3. Linearity/Homogeneity of variance**
+Our linear model should be a good fit. In order to check it we can refer to the *Resivuals vs Fitted values* plot. It also does not have any particular pattern and the points are evenly spread across 0 line, therefore we can conclude that the linearity assumption is satisfied. We also have to make sure that the variance of the residuals is hold constant, and we can check for it from the same plot. The plot seems to have some *megaphone* shape, which indicates that the variance might not be constant. Let's verify the homogeneity of variance with Breusch-Pagan Test.
+``` {r}
+bptest(best_m_2)
+```
+
+Since p-value is way larger than 0.05, the variance indeed must be non-constant. In order to eliminate this problem, we can use the Weighted-Least Squares. (WLS).
+``` {r}
+# Fitting the WLS
+sd <- lm(abs(best_m_2$residuals) ~ veg_consumption+GDP+GHI+unemployment+depression, data=data_reduced_5)
+wls <- lm(life_satisfaction ~ veg_consumption+GDP+GHI+unemployment+depression, weights=1/(abs(fitted(sd)))^2 , data=data_reduced_5)
+```
+
+Let's compare our previous model with WLS.
+``` {r}
+summary(best_m_2)
+summary(wls)
+```
+
+From the above tables we can see that $R_a^2$ increased when we fitted the Weighted-Least Squares.
+
+## Discussion
+
+The investigation started by conducting an exploratory data analysis. In this stage, it was revealed that some of the variables contained outliers and some of them were highly correlated with each other, which might cause multicollinearity. The initial model that we tried to fit was a simple additive model containing all 13 variables. In order to address the high correlation concern, the variance inflation factor (VIF) was calculated based on this model. The VIF scores were very high for some variables which suggests the presence of severe multicollinearity. In order to handle multicollinearity, 3 variables with the highest VIF scores were removed from the model one by one. The resultant model consisted of 10 variables and the VIF score for all of them was below 5. It is worth mentioning that the model with very small amount of multicollinearity is considered to be the one having all VIF scores to be close to 1. In our case, most of the variables have VIF scores near 1, but there are also scores in the range of 3 to 4.5, which is still a moderate amount of multicollinearity. It would have been a better choice to use ridge regression instead of dropping columns with the highest VIF scores, because even not severe, our model still contains variables causing moderate amount of multicollinearity which still might affect the performance of our model. <br />
+
+The variable selection process was then followed by the best subset method. Based on three metrics, namely $R_a^2$, Mallows's $C_p$ and BIC, it was concluded that the best subset is a combination of `veg_consumption`, `GDP`, `GHI`, `unemployment`, and `depression`. <br />
+
+Following this, the model diagnostics were performed. Additive-Variable plots revealed that all 5 selected variables were significant to the model, and there was no need for higher-order terms. Interaction terms were also not needed because the plots "Residuals vs Interaction" did not show any non-linear pattern. We also investigated the outliers because some of them could influence the model a lot. The investigation was done with the help of Cook's distance chart and "Studentized Residuals vs leverage" plot. Both of the plots showed that observation 42 was an influential point. This point was further removed from the model such that the model could generalize to new observations well enough. The main 4 assumptions that the model had to follow also were checked. Normality, independence, and linearity revealed no problems, however, there seemed to be a problem with the homogeneity of variance. In order to solve this problem weighted least squares model was utilized.
+
+## Conclusion
+
+The purpose of this project was to identify which factors affected the life satisfaction rate of people from developing countries in 2016. The investigation of this question was based on the data retrieved from [Our World in Data](https://ourworldindata.org), which is a credible source. It is a scientific online publication that focuses on large global problems such as poverty, disease, inequality, etc. Its research team is based at the University of Oxford. <br />
+
+To conclude, from the above observations we can see that `veg_consumption`, `GDP`, `GHI`, `unemployment`, and `depression` in combination may explain the life expectancy rate very well. However, it should be pointed out that since this project is an observational study, it cannot prove causation. In order to make conclusions regarding causation, one should make research on the topic first and choose the most relevant variables. If I continued working with this project, I would definitely do that because in this way we could make decent conclusions from the study.
+
+
+
+
+
+
