@@ -20,7 +20,7 @@
 ### Utilized Regression Analysis tools
 - Detecting outliers (Boxplots, Cook's D chart);
 - Bulding a correlation matrix;
-- Feature selection (F-tests, VIF, $R_a^2, Mallow's $C_p$, BIC);
+- Feature selection (F-tests, VIF, $R_a^2$, Mallow's $C_p$, BIC);
 - Building Added-Variable plots;
 - Checking assumptions about the data (normality, linearity, independence);
 - Hypothesis testing. 
