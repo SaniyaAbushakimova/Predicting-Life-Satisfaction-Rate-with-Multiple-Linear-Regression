@@ -1,10 +1,5 @@
-## Project_1 Content
-For this project several toolsets were utilized:
-- numpy
-- pandas
-- matplotlib.pyplot
-- time
-- scikit.learn
+## Project_1 content
+Purpose: explore the relationshit between Life Satisfaction and GDP per capita, answer **Did the life satisfaction of people living in European countries in 2017 depend on the country's GPD?**
 
 ## Content
 - `Project_1/Project_1_markdown.pdf` - Report (AAAI format) that contains description and results of the work done.
