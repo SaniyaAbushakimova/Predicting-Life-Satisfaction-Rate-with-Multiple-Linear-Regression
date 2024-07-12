@@ -1,4 +1,7 @@
 ## Project_1
+
+Project 1 completed on March 27, 2021.
+
 **Project Type**: Simple Linear Regression problem
 ### Purpose
 - Explore the relationship between Life Satisfaction and GDP per capita;
@@ -13,6 +16,9 @@
 - `Project_1/Project_1_solution.Rmd`- the project code written in `R`.
 
 ## Project_2
+
+Project 2 completed on May 6, 2021.
+
 **Project Type**: Multiple Linear Regression problem
 ### Purpose
 - Analyze what factors influence the level of satisfaction of people living in developing countries;
