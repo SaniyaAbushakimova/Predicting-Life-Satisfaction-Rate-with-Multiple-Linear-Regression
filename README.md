@@ -3,7 +3,7 @@
 Project 1 completed on March 27, 2021.
 
 **Project Type**: Simple Linear Regression problem
-### Purpose
+### Purpose 
 - Explore the relationship between Life Satisfaction and GDP per capita;
 - Answer the question *Did the life satisfaction of people living in European countries in 2017 depend on the country's GPD?*
 ### Regression Analysis tools
